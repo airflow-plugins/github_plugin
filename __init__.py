@@ -26,8 +26,8 @@
 """
 
 from airflow.plugins_manager import AirflowPlugin
-from GithubPlugin.hooks.github_hook import GithubHook
-from GithubPlugin.operators.github_to_s3_operator import GithubToS3Operator
+from github_plugin.hooks.github_hook import GithubHook
+from github_pllugin.operators.github_to_s3_operator import GithubToS3Operator
 
 
 class GithubPlugin(AirflowPlugin):
