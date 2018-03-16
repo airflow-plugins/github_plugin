@@ -1,3 +1,4 @@
+from tempfile import NamedTemporaryFile
 from flatten_json import flatten
 import logging
 import json
@@ -55,10 +56,10 @@ class GithubToS3Operator(BaseOperator):
                  github_conn_id,
                  github_org,
                  github_object,
-                 destination='s3',
                  dest_conn_id,
                  bucket,
                  key,
+                 destination='s3',
                  github_repo=None,
                  payload={},
                  **kwargs):
