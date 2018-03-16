@@ -1,10 +1,13 @@
-from airflow.utils.decorators import apply_defaults
-from airflow.models import BaseOperator
-from ..hooks.github_hook import GithubHook
-from airflow.hooks import S3Hook
 from flatten_json import flatten
 import logging
 import json
+
+from airflow.utils.decorators import apply_defaults
+from airflow.models import BaseOperator
+from airflow.hooks import S3Hook, GoogleCloudStorageHook
+
+from github_plugin.hooks.github_hook import GithubHook
+
 
 class GithubToS3Operator(BaseOperator):
     """
@@ -32,26 +35,30 @@ class GithubToS3Operator(BaseOperator):
                                      pass into the object request as
                                      keyword arguments.
     :type payload:                   dict
-    :param s3_conn_id:               The s3 connection id.
-    :type s3_conn_id:                string
-    :param s3_bucket:                The S3 bucket to be used to store
-                                     the Github data.
-    :type s3_bucket:                 string
-    :param s3_key:                   The S3 key to be used to store
-                                     the Github data.
-    :type s3_key:                    string
+    :param destination:              The final destination where the data
+                                     should be stored. Possible values include:
+                                        - GCS
+                                        - S3
+    :type destination:               string
+    :param dest_conn_id:             The destination connection id.
+    :type dest_conn_id:              string
+    :param bucket:                   The bucket to be used to store the data.
+    :type bucket:                    string
+    :param key:                      The filename to be used to store the data.
+    :type key:                       string
     """
 
-    template_field = ('s3_key',)
+    template_field = ('key',)
 
     @apply_defaults
     def __init__(self,
                  github_conn_id,
                  github_org,
                  github_object,
-                 s3_conn_id,
-                 s3_bucket,
-                 s3_key,
+                 destination='s3',
+                 dest_conn_id,
+                 bucket,
+                 key,
                  github_repo=None,
                  payload={},
                  **kwargs):
@@ -61,9 +68,10 @@ class GithubToS3Operator(BaseOperator):
         self.github_repo = github_repo
         self.github_object = github_object
         self.payload = payload
-        self.s3_conn_id = s3_conn_id
-        self.s3_bucket = s3_bucket
-        self.s3_key = s3_key
+        self.destination = destination
+        self.dest_conn_id = dest_conn_id
+        self.bucket = bucket
+        self.key = key
 
         if self.github_object.lower() not in ('commits',
                                               'commit_comments',
@@ -77,7 +85,6 @@ class GithubToS3Operator(BaseOperator):
 
     def execute(self, context):
         g = GithubHook(self.github_conn_id)
-        s3 = S3Hook(self.s3_conn_id)
         output = []
 
         if self.github_object not in ('members',
@@ -97,15 +104,35 @@ class GithubToS3Operator(BaseOperator):
                 output = self.retrieve_data(g, repo=self.github_repo)
         else:
             output = self.retrieve_data(g, repo=self.github_repo)
-        output = '\n'.join([json.dumps(flatten(record)) for record in output])
-        s3.load_string(
-            string_data=output,
-            key=self.s3_key,
-            bucket_name=self.s3_bucket,
-            replace=True
-        )
 
-        s3.connection.close()
+        self.output_manager(output)
+
+    def output_manager(self, output):
+        output = '\n'.join([json.dumps(flatten(record)) for record in output])
+
+        if self.destination.lower() == 's3':
+            s3 = S3Hook(self.dest_conn_id)
+
+            s3.load_string(
+                string_data=output,
+                key=self.key,
+                bucket_name=self.bucket,
+                replace=True
+            )
+
+            s3.connection.close()
+
+        elif self.destination.lower() == 'gcs':
+            with NamedTemporaryFile('w') as tmp:
+                tmp.write(output)
+
+                gcs = GoogleCloudStorageHook(self.dest_conn_id)
+
+                gcs.upload(
+                    bucket=self.bucket,
+                    object=self.key,
+                    filename=tmp.name,
+                )
 
     def retrieve_data(self, g, repo=None):
         """
