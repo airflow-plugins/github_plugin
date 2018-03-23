@@ -10,9 +10,9 @@ from airflow.hooks import S3Hook, GoogleCloudStorageHook
 from github_plugin.hooks.github_hook import GithubHook
 
 
-class GithubToS3Operator(BaseOperator):
+class GithubToCloudStorageOperator(BaseOperator):
     """
-    Github To S3 Operator
+    Github To Cloud Storage Operator
     :param github_conn_id:           The Github connection id.
     :type github_conn_id:            string
     :param github_org:               The Github organization.
