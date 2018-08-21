@@ -27,7 +27,7 @@
 
 from airflow.plugins_manager import AirflowPlugin
 from github_plugin.hooks.github_hook import GithubHook
-from github_pllugin.operators.github_to_cloud_storage_operator import GithubToCloudStorageOperator
+from github_plugin.operators.github_to_cloud_storage_operator import GithubToCloudStorageOperator
 
 
 class GithubPlugin(AirflowPlugin):
