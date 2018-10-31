@@ -1,5 +1,5 @@
 # Github Plugin
-This plugin moves data from the Github API to S3 based on the specified object.
+This plugin moves data from the Github API to Google Cloud Storage based on the specified object.
 
 ## Hooks
 ### GithubHook
